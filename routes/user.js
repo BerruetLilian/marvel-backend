@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Comic = require("../models/Comic");
 const SHA256 = require("crypto-js/sha256");
@@ -127,6 +128,8 @@ router.delete("/user/favorites/:comicId", isAuthenticated, async (req, res) => {
   try {
     const { comicId } = req.params;
     const user = req.user;
+
+    //We verify that comic exist in user favorites
     let index = -1;
     for (let i = 0; i < user.favorites.length; i++) {
       if (user.favorites[i].apiId === comicId) {
@@ -138,6 +141,18 @@ router.delete("/user/favorites/:comicId", isAuthenticated, async (req, res) => {
     }
     user.favorites.splice(index, 1);
     await user.save();
+
+    //If comic is favorited by no one after being remove from user favorite we remove himl from database
+    const comicInDatabase = await Comic.findOne({ apiId: comicId });
+    const comicInDatabaseId = new mongoose.Types.ObjectId(comicInDatabase._id);
+    const comicStillFavorited = await User.findOne({
+      favorites: comicInDatabaseId,
+    });
+
+    if (!comicStillFavorited) {
+      await Comic.findByIdAndDelete(comicInDatabaseId);
+    }
+
     res.status(200).json({ message: "favorite removed" });
   } catch (error) {
     if (error.response) {
