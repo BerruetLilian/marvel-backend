@@ -116,6 +116,7 @@ router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
         label: label,
         description: data.description,
         apiId: data._id,
+        type: type,
       });
       await newFavorite.save();
     }

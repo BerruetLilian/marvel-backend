@@ -7,6 +7,7 @@ const Favorite = mongoose.model("Favorite", {
   label: String,
   description: String,
   apiId: String,
+  type: String,
 });
 
 module.exports = Favorite;
