@@ -126,7 +126,7 @@ router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
       element._id.equals(favorite._id)
     );
     if (alreadyFavorite) {
-      return res.json({ message: "Is already favorite" });
+      return res.status(400).json({ message: "Is already favorite" });
     }
     user.favorites.push(favorite);
     await user.save();
