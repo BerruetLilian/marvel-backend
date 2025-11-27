@@ -4,7 +4,7 @@ const User = mongoose.model("User", {
   token: String,
   hash: String,
   salt: String,
-  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comic" }],
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Favorite" }],
 });
 
 module.exports = User;

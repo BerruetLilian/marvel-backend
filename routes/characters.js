@@ -50,7 +50,7 @@ router.get("/character/:characterId", async (req, res) => {
     if (response.data) {
       res.json(response.data);
     } else {
-      res.status(400).json({ message: "Character not found" });
+      return res.status(400).json({ message: "Character not found" });
     }
   } catch (error) {
     if (error.response) {

@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
-const Comic = mongoose.model("Comic", {
+const Favorite = mongoose.model("Favorite", {
   thumbnail: {
     path: String,
     extension: String,
   },
-  title: String,
+  label: String,
   description: String,
   apiId: String,
 });
 
-module.exports = Comic;
+module.exports = Favorite;

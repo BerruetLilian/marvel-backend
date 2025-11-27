@@ -3,7 +3,7 @@ const router = express.Router();
 const axios = require("axios");
 const mongoose = require("mongoose");
 const User = require("../models/User");
-const Comic = require("../models/Comic");
+const Favorite = require("../models/Favorite");
 const SHA256 = require("crypto-js/sha256");
 const encBase64 = require("crypto-js/enc-base64");
 const uid2 = require("uid2");
@@ -73,36 +73,62 @@ router.post("/user/login", async (req, res) => {
   }
 });
 
-router.post("/user/favorites/:comicId", isAuthenticated, async (req, res) => {
+router.get("/user/favorites/", isAuthenticated, async (req, res) => {
   try {
-    //We make sure that only one copy of each comics in favorites are in our databse
-    const { comicId } = req.params;
-    const comicInDatabase = await Comic.findOne({ apiId: comicId });
-    let newComic;
-    if (!comicInDatabase) {
+    res
+      .status(200)
+      .json({ results: req.user.favorites, count: req.user.favorites.length });
+  } catch (error) {
+    if (error.response) {
+      return res.status(error.response.status).json(error.response.data);
+    }
+    res.status(500).json({ message: "server error", error: error.message });
+  }
+});
+
+router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
+  try {
+    //We make sure that only one copy of each favorite in our database
+    const { id } = req.params;
+    if (!req.body.type || Object.keys(req.body).length !== 1) {
+      return res.status(400).json({ message: "Invalid body" });
+    }
+    const type = req.body.type;
+    if (type !== "comic" && type !== "character") {
+      return res
+        .status(400)
+        .json({ message: "Invalid type: either comic or character" });
+    }
+    const favoriteInDatabase = await Favorite.findOne({ apiId: id });
+    let newFavorite;
+
+    if (!favoriteInDatabase) {
       const { data } = await axios(
-        `https://lereacteur-marvel-api.herokuapp.com/comic/${comicId}?apiKey=` +
+        `https://lereacteur-marvel-api.herokuapp.com/${type}/${id}?apiKey=` +
           process.env.MARVEL_API_KEY
       );
-
-      newComic = new Comic({
+      if (!data) {
+        return res.status(400).json({ message: "Character not found" });
+      }
+      const label = data.title || data.name;
+      newFavorite = new Favorite({
         thumbnail: data.thumbnail,
-        title: data.title,
+        label: label,
         description: data.description,
         apiId: data._id,
       });
-      await newComic.save();
+      await newFavorite.save();
     }
-    const comic = comicInDatabase || newComic;
+    const favorite = favoriteInDatabase || newFavorite;
 
     const user = req.user;
-    const comicAlreadyFavorite = user.favorites.find((element) =>
-      element._id.equals(comic._id)
+    const alreadyFavorite = user.favorites.find((element) =>
+      element._id.equals(favorite._id)
     );
-    if (comicAlreadyFavorite) {
-      return res.json({ message: "comic is already favorite" });
+    if (alreadyFavorite) {
+      return res.json({ message: "Is already favorite" });
     }
-    user.favorites.push(comic);
+    user.favorites.push(favorite);
     await user.save();
     res.status(200).json({ message: "new favorite added" });
   } catch (error) {
@@ -113,44 +139,31 @@ router.post("/user/favorites/:comicId", isAuthenticated, async (req, res) => {
   }
 });
 
-router.get("/user/favorites/", isAuthenticated, async (req, res) => {
+router.delete("/user/favorites/:id", isAuthenticated, async (req, res) => {
   try {
-    res.status(200).json(req.user.favorites);
-  } catch (error) {
-    if (error.response) {
-      return res.status(error.response.status).json(error.response.data);
-    }
-    res.status(500).json({ message: "server error", error: error.message });
-  }
-});
-
-router.delete("/user/favorites/:comicId", isAuthenticated, async (req, res) => {
-  try {
-    const { comicId } = req.params;
+    const { id } = req.params;
     const user = req.user;
 
-    //We verify that comic exist in user favorites
+    //We verify that favorite exist in user favorites
     let index = -1;
     for (let i = 0; i < user.favorites.length; i++) {
-      if (user.favorites[i].apiId === comicId) {
+      if (user.favorites[i]._id.equals(id)) {
         index = i;
       }
     }
     if (index < 0) {
-      return res.status(400).json({ message: "comic is not a favorite" });
+      return res.status(400).json({ message: "Is not a favorite" });
     }
     user.favorites.splice(index, 1);
     await user.save();
 
-    //If comic is favorited by no one after being remove from user favorite we remove himl from database
-    const comicInDatabase = await Comic.findOne({ apiId: comicId });
-    const comicInDatabaseId = new mongoose.Types.ObjectId(comicInDatabase._id);
-    const comicStillFavorited = await User.findOne({
-      favorites: comicInDatabaseId,
+    //If is favorited by no one after being remove from user favorites we remove him from database
+    const stillFavorited = await User.findOne({
+      favorites: new mongoose.Types.ObjectId(id),
     });
 
-    if (!comicStillFavorited) {
-      await Comic.findByIdAndDelete(comicInDatabaseId);
+    if (!stillFavorited) {
+      await Favorite.findByIdAndDelete(id);
     }
 
     res.status(200).json({ message: "favorite removed" });
