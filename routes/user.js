@@ -131,7 +131,7 @@ router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
     }
     user.favorites.push(favorite);
     await user.save();
-    res.status(200).json({ message: "new favorite added" });
+    res.status(200).json({ message: "new favorite added", result: newFavorite });
   } catch (error) {
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
