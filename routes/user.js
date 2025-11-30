@@ -88,6 +88,8 @@ router.get("/user/favorites/", isAuthenticated, async (req, res) => {
 
 router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
   try {
+    console.log("requete => ", req.body, req.params);
+
     //We make sure that only one copy of each favorite in our database
     const { id } = req.params;
     if (!req.body.type || Object.keys(req.body).length !== 1) {
@@ -110,6 +112,8 @@ router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
       if (!data) {
         return res.status(400).json({ message: "Character not found" });
       }
+      console.log("Retour =>", data);
+
       const label = data.title || data.name;
       newFavorite = new Favorite({
         thumbnail: data.thumbnail,
@@ -131,7 +135,11 @@ router.post("/user/favorites/:id", isAuthenticated, async (req, res) => {
     }
     user.favorites.push(favorite);
     await user.save();
-    res.status(200).json({ result: newFavorite });
+    console.log("envoi =>", newFavorite);
+
+    res
+      .status(200)
+      .json({ message: "new favorite added", result: newFavorite });
   } catch (error) {
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
